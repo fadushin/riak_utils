@@ -43,32 +43,34 @@ class Connection:
         self.host = host
         self.port = int(port)
 
-    def get(self, context, headers={}, body=None):
+    def get(self, context, headers={}, body=None, params={}):
         return self.request(
             "GET", context,
-            additional_headers=headers, body=body
+            additional_headers=headers, body=body, params=params
         )
 
-    def put(self, context, body, content_type="text/plain", headers={}):
+    def put(self, context, body, content_type="text/plain", headers={}, params={}):
         additional_headers = {'content-type': content_type}
         additional_headers.update(headers)
         return self.request(
             "PUT", context,
-            additional_headers=additional_headers, body=body
+            additional_headers=additional_headers, body=body, params=params
         )
 
-    def delete(self, context, headers={}, body=None):
+    def delete(self, context, headers={}, body=None, params={}):
         return self.request(
             "DELETE", context,
-            additional_headers=headers, body=body
+            additional_headers=headers, body=body, params=params
         )
 
-    def request(self, verb, context, additional_headers={}, body=None):
+    def request(self, verb, context, additional_headers={}, body=None, params={}):
         try:
+            url = self.create_url(context, params)
             headers = self.create_default_headers()
             headers.update(additional_headers)
             connection = HTTPConnection(self.host, self.port)
-            connection.request(verb, context, headers=headers, body=body)
+            #print(url)
+            connection.request(verb, url, headers=headers, body=body)
             response = connection.getresponse()
             return {
                 'status': response.status,
@@ -84,6 +86,16 @@ class Connection:
         return {
             'content-type': "text/plain"
         }
+
+    @staticmethod
+    def create_url(context, params):
+        ret = context
+        i = 0
+        for k, v in params.items():
+            sep = "?" if i == 0 else "&"
+            ret += "{}{}={}".format(sep, k, v)
+            i += 1
+        return ret
 
 
 def get_bucket_types():
@@ -143,6 +155,18 @@ def build_bucket_type_model(host, port, bucket_type=None, bucket_name=None, key=
     return ret
 
 
+def pretty_print_response(response, verbose):
+    if verbose:
+        print("Status: {}".format(response['status']))
+        print("Headers:")
+        headers = response['headers']
+        for k, v in headers.items():
+            print("    {}: {}".format(k, v))
+        print("Body: {}".format(response['body']))
+    elif response['body']:
+        print(response['body'])
+
+
 def create_option_parser():
     from optparse import OptionParser
     parser = OptionParser()
@@ -161,17 +185,17 @@ def create_option_parser():
         default=8098
     )
     parser.add_option(
-        "--bucket_type", "--btype",
+        "--bucket_type", "-t",
         dest="bucket_type",
         help="Riak Bucket Type",
     )
     parser.add_option(
-        "--bucket_name",  "--bname",
+        "--bucket_name",  "-n",
         dest="bucket_name",
         help="Riak Bucket Name",
     )
     parser.add_option(
-        "--key",
+        "--key", "-k",
         dest="key",
         help="Riak Key",
     )

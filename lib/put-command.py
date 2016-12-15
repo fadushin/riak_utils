@@ -38,7 +38,7 @@ def create_option_parser():
         default="text/plain",
     )
     parser.add_option(
-        "--value",
+        "--value", "-v",
         dest="value",
         help="value to put in Riak object",
     )
@@ -48,12 +48,52 @@ def create_option_parser():
         help="value to put in Riak object, from file",
     )
     parser.add_option(
-        "--force",
+        "--force", "-f",
         dest="force",
         action="store_true",
         help="Do not read before write to resolve vclocks, if the object already exists",
     )
+    parser.add_option(
+        "--w",
+        dest="w",
+        help="w value (default: quorum)",
+    )
+    parser.add_option(
+        "--pw",
+        dest="pw",
+        help="pw value (default: 0)",
+    )
+    parser.add_option(
+        "--dw",
+        dest="dw",
+        help="dw value (default: quorum)",
+    )
+    parser.add_option(
+        "--returnbody",
+        dest="returnbody",
+        action="store_true",
+        help="return the body in the response",
+    )
+    parser.add_option(
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        help="Print the results verbosely",
+    )
     return parser
+
+
+def get_params(options):
+    ret = {}
+    if options.w:
+        ret['w'] = options.w
+    if options.pw:
+        ret['pw'] = options.pw
+    if options.dw:
+        ret['dw'] = options.dw
+    if options.returnbody:
+        ret['returnbody'] = "true"
+    return ret
 
 
 def main(argv) :
@@ -73,6 +113,7 @@ def main(argv) :
         if not options.value and not options.file:
             parser.print_help()
             return 1
+        params = get_params(options)
         connection = riak_util.Connection(
             options.host, options.port
         )
@@ -84,12 +125,11 @@ def main(argv) :
             result = connection.get(context)
             if result['status'] != 404:
                 vclock = result['headers']['X-Riak-Vclock']
-
-
-                #raise Exception("Object already exists.  Use --force to force re-creation, which may result in siblings")
         body = riak_util.read_file(options.file) if options.file else options.value
         headers = {'X-Riak-Vclock': vclock} if vclock else {}
-        return connection.put(context, body=body, content_type=options.content_type, headers=headers)
+        response = connection.put(context, body=body, content_type=options.content_type, headers=headers, params=params)
+        riak_util.pretty_print_response(response, options.verbose)
+        return 0
     except Exception as e:
         print("An error occurred creating {{{{{}, {}}}, {}}}: {}".format(
             options.bucket_type, options.bucket_name, options.key, e

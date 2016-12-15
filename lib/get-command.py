@@ -28,8 +28,45 @@
 import riak_util
 
 
-def main(argv) :
+def create_option_parser():
     parser = riak_util.create_option_parser()
+    parser.add_option(
+        "--r",
+        dest="r",
+        help="r value (default: quorum)",
+    )
+    parser.add_option(
+        "--pr",
+        dest="pr",
+        help="pr value (default: 0)",
+    )
+    parser.add_option(
+        "--notfound_ok",
+        dest="notfound_ok",
+        help="notfound_ok value (default: true)",
+    )
+    parser.add_option(
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        help="Print the results verbosely",
+    )
+    return parser
+
+
+def get_params(options):
+    ret = {}
+    if options.r:
+        ret['r'] = options.r
+    if options.pr:
+        ret['pr'] = options.pr
+    if options.notfound_ok:
+        ret['notfound_ok'] = "true"
+    return ret
+
+
+def main(argv) :
+    parser = create_option_parser()
     (options, args) = parser.parse_args()
     try:
         if not options.bucket_type:
@@ -41,13 +78,15 @@ def main(argv) :
         if not options.key:
             parser.print_help()
             return 1
+        params = get_params(options)
         connection = riak_util.Connection(
             options.host, options.port
         )
         context = "/types/{}/buckets/{}/keys/{}/".format(
             options.bucket_type, options.bucket_name, options.key
         )
-        print(connection.get(context))
+        response = connection.get(context, params=params)
+        riak_util.pretty_print_response(response, options.verbose)
         return 0
     except Exception as e:
         print("An error occurred creating {{{{{}, {}}}, {}}}: {}".format(
