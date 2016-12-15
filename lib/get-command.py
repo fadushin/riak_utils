@@ -25,57 +25,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-
-from optparse import OptionParser
-import json
-import riak_utils
-
-optparser = OptionParser()
-optparser.add_option(
-    "--bucket_type", 
-    dest="bucket_type",
-    help="Riak Bucket Type", 
-    metavar="BUCKET_TYPE",
-)
-optparser.add_option(
-    "--bucket_name", 
-    dest="bucket_name",
-    help="Riak Bucket Name", 
-    metavar="BUCKET_NAME",
-)
-optparser.add_option(
-    "--key", 
-    dest="key",
-    help="Riak Key", 
-    metavar="Key",
-)
-optparser.add_option(
-    "--host", 
-    dest="host",
-    help="Riak host", 
-    metavar="HOST",
-    type="string",
-    default="localhost"
-)
-optparser.add_option(
-    "--port", 
-    dest="port",
-    help="Riak endpoint port", 
-    metavar="PORT",
-    type="int",
-    default=8098
-)
+import riak_util
 
 
 def main(argv) :
-    (options, args) = optparser.parse_args()
-    
-    connection = riak_utils.Connection(
-        host, port, "/types/%s/buckets/%s/keys/%s/" 
-        % (options.bucket_type, options.bucket_name, options.key)
-    )
-    print connection.get()
-    return 0
+    parser = riak_util.create_option_parser()
+    (options, args) = parser.parse_args()
+    try:
+        if not options.bucket_type:
+            parser.print_help()
+            return 1
+        if not options.bucket_name:
+            parser.print_help()
+            return 1
+        if not options.key:
+            parser.print_help()
+            return 1
+        connection = riak_util.Connection(
+            options.host, options.port
+        )
+        context = "/types/{}/buckets/{}/keys/{}/".format(
+            options.bucket_type, options.bucket_name, options.key
+        )
+        print(connection.get(context))
+        return 0
+    except Exception as e:
+        print("An error occurred creating {{{{{}, {}}}, {}}}: {}".format(
+            options.bucket_type, options.bucket_name, options.key, e
+        ))
+        #import traceback
+        #traceback.print_exc()
+        return -1
 
 if __name__ == "__main__" :
     import sys

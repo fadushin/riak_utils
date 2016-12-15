@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env python
 #
 # Copyright (c) dushin.net
 # All rights reserved.
@@ -25,37 +25,34 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+import riak_util
 
-BINDIR=$(dirname $0)
-LIBDIR=${BINDIR}/../lib
+def delete(host, port, bucket_type, bucket_name, key):
+    context = "/types/{}/buckets/{}/keys/{}".format(
+        bucket_type, bucket_name, key
+    )
+    connection = riak_util.Connection(host, port)
+    return connection.delete(context)
 
-print_help() {
-    CMDS=$(for i in $(ls ${LIBDIR}/*-command.py); do echo "$(basename $i -command.py)"; done)
-    echo "Commands: \n\t"; echo $CMDS
-    echo
-}
+def main(argv) :
+    parser = riak_util.create_option_parser()
+    (options, args) = parser.parse_args()
+    # hash of hashes of keylists
+    model = riak_util.build_bucket_type_model(
+        options.host, options.port,
+        options.bucket_type,
+        options.bucket_name,
+        options.key
+    )
+    for bucket_type, bucket in model.items():
+        for bucket_name, keys in bucket.items():
+            for key in keys:
+                delete(options.host, options.port, bucket_type, bucket_name, key)
+                print("deleted {} {} {}".format(bucket_type, bucket_name, key))
 
+    return 0
 
-NARGS=$#
-if [ ${NARGS} -lt 1 ]; then
-    echo "Syntax: ${0} <cmd> [--help] <args>"
-    print_help
-    exit 1
-fi
+if __name__ == "__main__" :
+    import sys
+    sys.exit(main(sys.argv))
 
-CMD=${1}
-shift
-
-if [ "${CMD}" == "help" ]; then
-    print_help
-    exit 0
-fi
-
-if [ ! -e "${LIBDIR}/${CMD}-command.py" ] ; then
-    echo "No such command: $CMD"
-    print_help
-    exit 1
-fi
-
-
-exec python3 ${LIBDIR}/${CMD}-command.py $@
