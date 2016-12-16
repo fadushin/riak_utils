@@ -101,9 +101,6 @@ def main(argv) :
     (options, args) = parser.parse_args()
     try:
         (options, args) = parser.parse_args()
-        if not options.bucket_type:
-            parser.print_help()
-            return 1
         if not options.bucket_name:
             parser.print_help()
             return 1
@@ -117,9 +114,14 @@ def main(argv) :
         connection = riak_util.Connection(
             options.host, options.port
         )
-        context = "/types/{}/buckets/{}/keys/{}/".format(
-            options.bucket_type, options.bucket_name, options.key
-        )
+        if options.bucket_type:
+            context = "/types/{}/buckets/{}/keys/{}/".format(
+                options.bucket_type, options.bucket_name, options.key
+            )
+        else:
+            context = "/buckets/{}/keys/{}/".format(
+                options.bucket_name, options.key
+            )
         vclock = None
         if not options.force:
             result = connection.get(context)
