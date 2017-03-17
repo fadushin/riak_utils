@@ -116,17 +116,21 @@ def main(argv) :
         )
         if options.bucket_type:
             context = "/types/{}/buckets/{}/keys/{}/".format(
-                options.bucket_type, options.bucket_name, options.key
+                riak_util.escape(options.bucket_type),
+                riak_util.escape(options.bucket_name),
+                riak_util.escape(options.key)
             )
         else:
             context = "/buckets/{}/keys/{}/".format(
-                options.bucket_name, options.key
+                riak_util.escape(options.bucket_name),
+                riak_util.escape(options.key)
             )
         vclock = None
         if not options.force:
             result = connection.get(context)
             if result['status'] != 404:
-                vclock = result['headers']['X-Riak-Vclock']
+                if 'X-Riak-Vclock' in result['headers']:
+                    vclock = result['headers']['X-Riak-Vclock']
         body = riak_util.read_file(options.file) if options.file else options.value
         headers = {'X-Riak-Vclock': vclock} if vclock else {}
         response = connection.put(context, body=body, content_type=options.content_type, headers=headers, params=params)

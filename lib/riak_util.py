@@ -29,6 +29,7 @@
 from http.client import HTTPConnection
 import subprocess
 import json
+import urllib
 
 def list_to_dict(el):
     ret = {}
@@ -211,3 +212,7 @@ def invoke(command):
             (command, proc.returncode, stdout, stderr)
         )
     return stdout
+
+
+def escape(path):
+    return urllib.quote(path)
