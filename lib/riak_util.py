@@ -29,7 +29,7 @@
 from http.client import HTTPConnection
 import subprocess
 import json
-import urllib
+import urllib.parse
 
 def list_to_dict(el):
     ret = {}
@@ -112,7 +112,10 @@ def get_bucket_types():
 def get_bucket_names(host, port, bucket_type):
     context = "/types/{}/buckets?buckets=true".format(bucket_type)
     connection = Connection(host, port)
-    data = json.loads(connection.get(context)['body'].decode())
+    try :
+        data = json.loads(connection.get(context)['body'].decode())
+    except Exception as e :
+        print("An error ocurred decoding JSON payload from request for bucket names.  Error: {}; body: {}".format(e, connection.get(context)['body']))
     #print("data: {}".format(data))
     return data['buckets']
 
@@ -126,7 +129,7 @@ def get_keys(host, port, bucket):
 
 
 def build_key_model(host, port, bucket_type, bucket_name, key=None):
-    if not key:
+    if key is None:
         return get_keys(host, port, (bucket_type, bucket_name))
     else:
         return [key]
@@ -134,7 +137,7 @@ def build_key_model(host, port, bucket_type, bucket_name, key=None):
 
 def build_bucket_model(host, port, bucket_type, bucket_name=None, key=None):
     ret = {}
-    if not bucket_name:
+    if bucket_name is None:
         bucket_names = get_bucket_names(host, port, bucket_type)
         #print("bucket_names: {}".format(bucket_names))
         for name in bucket_names:
@@ -146,7 +149,7 @@ def build_bucket_model(host, port, bucket_type, bucket_name=None, key=None):
 
 def build_bucket_type_model(host, port, bucket_type=None, bucket_name=None, key=None):
     ret = {}
-    if not bucket_type:
+    if bucket_type is None:
         bucket_types = get_bucket_types()
         #print("bucket_types: {}".format(bucket_types))
         for type_ in bucket_types:
@@ -215,4 +218,4 @@ def invoke(command):
 
 
 def escape(path):
-    return urllib.quote(path)
+    return urllib.parse.quote(path)
