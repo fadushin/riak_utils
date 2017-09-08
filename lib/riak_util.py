@@ -30,6 +30,7 @@ from http.client import HTTPConnection
 import subprocess
 import json
 import urllib.parse
+import base64
 
 def list_to_dict(el):
     ret = {}
@@ -122,9 +123,11 @@ def get_bucket_names(host, port, bucket_type):
 
 def get_keys(host, port, bucket):
     bucket_type, bucket_name = bucket
-    context = "/types/{}/buckets/{}/keys?keys=true".format(bucket_type, bucket_name)
+    context = "/types/{}/buckets/{}/keys?keys=true".format(escape_slash(bucket_type), escape_slash(bucket_name))
     connection = Connection(host, port)
-    data = json.loads(connection.get(context)['body'].decode())
+    body = connection.get(context)['body']
+    log("Context: {} BODY: {}".format(context, body))
+    data = json.loads(body.decode())
     return data['keys']
 
 
@@ -139,9 +142,9 @@ def build_bucket_model(host, port, bucket_type, bucket_name=None, key=None):
     ret = {}
     if bucket_name is None:
         bucket_names = get_bucket_names(host, port, bucket_type)
-        #print("bucket_names: {}".format(bucket_names))
-        for name in bucket_names:
-            ret[name] = build_key_model(host, port, bucket_type, name, key)
+        log("bucket_names: {}".format(bucket_names))
+        for _bucket_name in bucket_names:
+            ret[_bucket_name] = build_key_model(host, port, bucket_type, _bucket_name, key)
     else:
         ret[bucket_name] = build_key_model(host, port, bucket_type, bucket_name, key)
     return ret
@@ -151,7 +154,7 @@ def build_bucket_type_model(host, port, bucket_type=None, bucket_name=None, key=
     ret = {}
     if bucket_type is None:
         bucket_types = get_bucket_types()
-        #print("bucket_types: {}".format(bucket_types))
+        log("bucket_types: {}".format(bucket_types))
         for type_ in bucket_types:
             ret[type_] = build_bucket_model(host, port, type_, bucket_name, key)
     else:
@@ -159,16 +162,20 @@ def build_bucket_type_model(host, port, bucket_type=None, bucket_name=None, key=
     return ret
 
 
-def pretty_print_response(response, verbose):
+def pretty_print_response(response, verbose, b64=False):
+    if b64:
+        body = "0x{}".format(base64.b64encode(response['body']).decode())
+    else:
+        body = response['body']
     if verbose:
         print("Status: {}".format(response['status']))
         print("Headers:")
         headers = response['headers']
         for k, v in headers.items():
             print("    {}: {}".format(k, v))
-        print("Body: {}".format(response['body']))
+        print("Body: {}".format(body))
     elif response['body']:
-        print(response['body'])
+        print(body)
 
 
 def create_option_parser():
@@ -219,3 +226,10 @@ def invoke(command):
 
 def escape(path):
     return urllib.parse.quote(path)
+
+def escape_slash(path):
+    return escape(path).replace("/", "%2F")
+
+def log(message):
+    #print("LOG> {}".format(message))
+    pass

@@ -46,6 +46,13 @@ def create_option_parser():
         help="notfound_ok value (default: true)",
     )
     parser.add_option(
+        "--b64",
+        dest="b64",
+        help="print base64-encoded value",
+        action="store_true",
+        default=False
+    )
+    parser.add_option(
         "--verbose",
         dest="verbose",
         action="store_true",
@@ -81,14 +88,17 @@ def main(argv) :
         )
         if options.bucket_type:
             context = "/types/{}/buckets/{}/keys/{}/".format(
-                options.bucket_type, options.bucket_name, options.key
+                riak_util.escape_slash(options.bucket_type), 
+                riak_util.escape_slash(options.bucket_name), 
+                riak_util.escape_slash(options.key)
             )
         else:
             context = "/buckets/{}/keys/{}/".format(
-                options.bucket_name, options.key
+                riak_util.escape_slash(options.bucket_name), 
+                riak_util.escape_slash(options.key)
             )
         response = connection.get(context, params=params)
-        riak_util.pretty_print_response(response, options.verbose)
+        riak_util.pretty_print_response(response, options.verbose, options.b64)
         return 0
     except Exception as e:
         print("An error occurred creating {{{{{}, {}}}, {}}}: {}".format(

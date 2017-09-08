@@ -27,6 +27,7 @@
 #
 
 import riak_util
+import base64
 
 
 def create_option_parser():
@@ -41,6 +42,13 @@ def create_option_parser():
         "--value", "-v",
         dest="value",
         help="value to put in Riak object",
+    )
+    parser.add_option(
+        "--b64",
+        dest="b64",
+        help="pass in base64-encoded value; value will be decoded before storage",
+        action="store_true",
+        default=False
     )
     parser.add_option(
         "--file",
@@ -95,7 +103,10 @@ def get_params(options):
         ret['returnbody'] = "true"
     return ret
 
-
+def get_data(options):
+    data = riak_util.read_file(options.file) if options.file else options.value
+    return base64.b64decode(data) if options.b64 else data
+    
 def main(argv) :
     parser = create_option_parser()
     (options, args) = parser.parse_args()
@@ -116,14 +127,14 @@ def main(argv) :
         )
         if options.bucket_type:
             context = "/types/{}/buckets/{}/keys/{}/".format(
-                riak_util.escape(options.bucket_type),
-                riak_util.escape(options.bucket_name),
-                riak_util.escape(options.key)
+                riak_util.escape_slash(options.bucket_type),
+                riak_util.escape_slash(options.bucket_name),
+                riak_util.escape_slash(options.key)
             )
         else:
             context = "/buckets/{}/keys/{}/".format(
-                riak_util.escape(options.bucket_name),
-                riak_util.escape(options.key)
+                riak_util.escape_slash(options.bucket_name),
+                riak_util.escape_slash(options.key)
             )
         vclock = None
         if not options.force:
@@ -131,7 +142,7 @@ def main(argv) :
             if result['status'] != 404:
                 if 'X-Riak-Vclock' in result['headers']:
                     vclock = result['headers']['X-Riak-Vclock']
-        body = riak_util.read_file(options.file) if options.file else options.value
+        body = get_data(options)
         headers = {'X-Riak-Vclock': vclock} if vclock else {}
         response = connection.put(context, body=body, content_type=options.content_type, headers=headers, params=params)
         riak_util.pretty_print_response(response, options.verbose)
