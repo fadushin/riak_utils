@@ -29,7 +29,9 @@ import riak_util
 
 def delete(host, port, bucket_type, bucket_name, key):
     context = "/types/{}/buckets/{}/keys/{}".format(
-        bucket_type, bucket_name, key
+        riak_util.escape_slash(bucket_type), 
+        riak_util.escape_slash(bucket_name), 
+        riak_util.escape_slash(key)
     )
     connection = riak_util.Connection(host, port)
     return connection.delete(context)
