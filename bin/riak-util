@@ -58,4 +58,4 @@ if [ ! -e "${LIBDIR}/${CMD}-command.py" ] ; then
 fi
 
 
-exec python3 ${LIBDIR}/${CMD}-command.py $@
+exec python ${LIBDIR}/${CMD}-command.py $@

@@ -28,6 +28,7 @@
 
 import json
 import riak_util
+from http_client import HttpClient
 import urllib
 import base64
 
@@ -53,11 +54,11 @@ def create_option_parser():
 def get_value(host, port, bucket_type, bucket_name, key):
     #quoted_key = urllib.quote(key.encode('utf8'), safe="")
     context = "/types/{}/buckets/{}/keys/{}".format(
-        riak_util.escape_slash(bucket_type), riak_util.escape_slash(bucket_name), riak_util.escape_slash(key)
+        HttpClient.escape_slash(bucket_type), HttpClient.escape_slash(bucket_name), HttpClient.escape_slash(key)
     )
     riak_util.log("Context: {}".format(context))
-    connection = riak_util.Connection(host, port)
-    return connection.get(context)['body']
+    client = HttpClient(host, port)
+    return client.get(context)['body']
 
 
 def main(argv):
@@ -78,7 +79,7 @@ def main(argv):
                         options.host, options.port, bucket_type, bucket_name, key
                     )
                     if options.b64:
-                        value = "0x{}".format(base64.b64encode(value).decode())
+                        value = "{}".format(base64.b64encode(value).decode())
                     print("{}, {}, {} {}".format(
                         bucket_type, bucket_name, key, value)
                     )

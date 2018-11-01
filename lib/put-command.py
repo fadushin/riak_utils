@@ -27,6 +27,7 @@
 #
 
 import riak_util
+from http_client import HttpClient
 import base64
 
 
@@ -122,30 +123,30 @@ def main(argv) :
             parser.print_help()
             return 1
         params = get_params(options)
-        connection = riak_util.Connection(
+        client = HttpClient(
             options.host, options.port
         )
         if options.bucket_type:
             context = "/types/{}/buckets/{}/keys/{}/".format(
-                riak_util.escape_slash(options.bucket_type),
-                riak_util.escape_slash(options.bucket_name),
-                riak_util.escape_slash(options.key)
+                client.escape_slash(options.bucket_type),
+                client.escape_slash(options.bucket_name),
+                client.escape_slash(options.key)
             )
         else:
             context = "/buckets/{}/keys/{}/".format(
-                riak_util.escape_slash(options.bucket_name),
-                riak_util.escape_slash(options.key)
+                client.escape_slash(options.bucket_name),
+                client.escape_slash(options.key)
             )
         vclock = None
         if not options.force:
-            result = connection.get(context)
+            result = client.get(context)
             if result['status'] != 404:
                 if 'X-Riak-Vclock' in result['headers']:
                     vclock = result['headers']['X-Riak-Vclock']
         body = get_data(options)
         headers = {'X-Riak-Vclock': vclock} if vclock else {}
-        response = connection.put(context, body=body, content_type=options.content_type, headers=headers, params=params)
-        riak_util.pretty_print_response(response, options.verbose)
+        response = client.put(context, body=body, content_type=options.content_type, headers=headers, params=params)
+        client.pretty_print_response(response, options.verbose)
         return 0
     except Exception as e:
         print("An error occurred creating {{{{{}, {}}}, {}}}: {}".format(

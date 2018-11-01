@@ -26,7 +26,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import riak_util
-
+from http_client import HttpClient
 
 def create_option_parser():
     parser = riak_util.create_option_parser()
@@ -83,22 +83,22 @@ def main(argv) :
             parser.print_help()
             return 1
         params = get_params(options)
-        connection = riak_util.Connection(
+        client = HttpClient(
             options.host, options.port
         )
         if options.bucket_type:
             context = "/types/{}/buckets/{}/keys/{}/".format(
-                riak_util.escape_slash(options.bucket_type), 
-                riak_util.escape_slash(options.bucket_name), 
-                riak_util.escape_slash(options.key)
+                client.escape_slash(options.bucket_type), 
+                client.escape_slash(options.bucket_name), 
+                client.escape_slash(options.key)
             )
         else:
             context = "/buckets/{}/keys/{}/".format(
-                riak_util.escape_slash(options.bucket_name), 
-                riak_util.escape_slash(options.key)
+                client.escape_slash(options.bucket_name), 
+                client.escape_slash(options.key)
             )
-        response = connection.get(context, params=params)
-        riak_util.pretty_print_response(response, options.verbose, options.b64)
+        response = client.get(context, params=params)
+        client.pretty_print_response(response, options.verbose, options.b64)
         return 0
     except Exception as e:
         print("An error occurred creating {{{{{}, {}}}, {}}}: {}".format(

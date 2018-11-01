@@ -26,79 +26,10 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-from http.client import HTTPConnection
+from http_client import HttpClient
 import subprocess
 import json
-import urllib.parse
 import base64
-
-def list_to_dict(el):
-    ret = {}
-    for k, v in el:
-        ret[k] = v
-    return ret
-
-
-class Connection:
-    def __init__(self, host, port):
-        self.connection = None
-        self.host = host
-        self.port = int(port)
-
-    def get(self, context, headers={}, body=None, params={}):
-        return self.request(
-            "GET", context,
-            additional_headers=headers, body=body, params=params
-        )
-
-    def put(self, context, body, content_type="text/plain", headers={}, params={}):
-        additional_headers = {'content-type': content_type}
-        additional_headers.update(headers)
-        return self.request(
-            "PUT", context,
-            additional_headers=additional_headers, body=body, params=params
-        )
-
-    def delete(self, context, headers={}, body=None, params={}):
-        return self.request(
-            "DELETE", context,
-            additional_headers=headers, body=body, params=params
-        )
-
-    def request(self, verb, context, additional_headers={}, body=None, params={}):
-        try:
-            url = self.create_url(context, params)
-            headers = self.create_default_headers()
-            headers.update(additional_headers)
-            connection = HTTPConnection(self.host, self.port)
-            #print(url)
-            connection.request(verb, url, headers=headers, body=body)
-            response = connection.getresponse()
-            return {
-                'status': response.status,
-                'headers': list_to_dict(response.getheaders()),
-                'body': response.read()
-            }
-        except Exception as e:
-            raise Exception(
-                "Connection error: {} to {}:{}".format(e, self.host, self.port))
-
-    @staticmethod
-    def create_default_headers():
-        return {
-            'content-type': "text/plain"
-        }
-
-    @staticmethod
-    def create_url(context, params):
-        ret = context
-        i = 0
-        for k, v in params.items():
-            sep = "?" if i == 0 else "&"
-            ret += "{}{}={}".format(sep, k, v)
-            i += 1
-        return ret
-
 
 def get_bucket_types():
     ret = []
@@ -112,20 +43,20 @@ def get_bucket_types():
 
 def get_bucket_names(host, port, bucket_type):
     context = "/types/{}/buckets?buckets=true".format(bucket_type)
-    connection = Connection(host, port)
+    client = HttpClient(host, port)
     try :
-        data = json.loads(connection.get(context)['body'].decode())
+        data = json.loads(client.get(context)['body'].decode())
     except Exception as e :
-        print("An error ocurred decoding JSON payload from request for bucket names.  Error: {}; body: {}".format(e, connection.get(context)['body']))
+        print("An error ocurred decoding JSON payload from request for bucket names.  Error: {}; body: {}".format(e, client.get(context)['body']))
     #print("data: {}".format(data))
     return data['buckets']
 
 
 def get_keys(host, port, bucket):
     bucket_type, bucket_name = bucket
-    context = "/types/{}/buckets/{}/keys?keys=true".format(escape_slash(bucket_type), escape_slash(bucket_name))
-    connection = Connection(host, port)
-    body = connection.get(context)['body']
+    context = "/types/{}/buckets/{}/keys?keys=true".format(HttpClient.escape_slash(bucket_type), HttpClient.escape_slash(bucket_name))
+    client = HttpClient(host, port)
+    body = client.get(context)['body']
     log("Context: {} BODY: {}".format(context, body))
     data = json.loads(body.decode())
     return data['keys']
@@ -160,22 +91,6 @@ def build_bucket_type_model(host, port, bucket_type=None, bucket_name=None, key=
     else:
         ret[bucket_type] = build_bucket_model(host, port, bucket_type, bucket_name, key)
     return ret
-
-
-def pretty_print_response(response, verbose, b64=False):
-    if b64:
-        body = "0x{}".format(base64.b64encode(response['body']).decode())
-    else:
-        body = response['body']
-    if verbose:
-        print("Status: {}".format(response['status']))
-        print("Headers:")
-        headers = response['headers']
-        for k, v in headers.items():
-            print("    {}: {}".format(k, v))
-        print("Body: {}".format(body))
-    elif response['body']:
-        print(body)
 
 
 def create_option_parser():
@@ -222,13 +137,6 @@ def invoke(command):
             (command, proc.returncode, stdout, stderr)
         )
     return stdout
-
-
-def escape(path):
-    return urllib.parse.quote(path)
-
-def escape_slash(path):
-    return escape(path).replace("/", "%2F")
 
 def log(message):
     #print("LOG> {}".format(message))

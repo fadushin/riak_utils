@@ -26,23 +26,37 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import riak_util
+from http_client import HttpClient
+
+def create_option_parser():
+    parser = riak_util.create_option_parser()
+    parser.add_option(
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        help="Print the results verbosely",
+    )
+    return parser
 
 def delete(host, port, bucket_type, bucket_name, key):
     context = "/types/{}/buckets/{}/keys/{}".format(
-        riak_util.escape_slash(bucket_type), 
-        riak_util.escape_slash(bucket_name), 
-        riak_util.escape_slash(key)
+        HttpClient.escape_slash(bucket_type), 
+        HttpClient.escape_slash(bucket_name), 
+        HttpClient.escape_slash(key)
     )
-    connection = riak_util.Connection(host, port)
-    return connection.delete(context)
+    client = HttpClient(host, port)
+    return client.delete(context)
 
 def main(argv) :
-    parser = riak_util.create_option_parser()
+    parser = create_option_parser()
     (options, args) = parser.parse_args()
+    bucket_type = "default"
+    if options.bucket_type is not None :
+        bucket_type = options.bucket_type
     # hash of hashes of keylists
     model = riak_util.build_bucket_type_model(
         options.host, options.port,
-        options.bucket_type,
+        bucket_type,
         options.bucket_name,
         options.key
     )
@@ -50,7 +64,8 @@ def main(argv) :
         for bucket_name, keys in bucket.items():
             for key in keys:
                 delete(options.host, options.port, bucket_type, bucket_name, key)
-                print("deleted {} {} {}".format(bucket_type, bucket_name, key))
+                if options.verbose :
+                    print("deleted {} {} {}".format(bucket_type, bucket_name, key))
 
     return 0
 
